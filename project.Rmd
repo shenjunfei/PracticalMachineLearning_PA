@@ -1,0 +1,68 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Junfei Shen"
+date: "April 26, 2015"
+output: html_document
+---
+
+Does the submission build a machine learning algorithm to predict activity quality from activity monitors?
+Do the authors describe what they expect the out of sample error to be and estimate the error appropriately with cross-validation?
+
+
+Load our data and have a look at the variables, especially at our outcome classe.
+```{r}
+testing <- read.csv("pml-testing.csv")
+training <- read.csv("pml-training.csv")
+names(training)
+summary(training$classe)
+```
+
+It's not a good idea to include all 160 varibales as predictors, so I'm going to filter the variables. 
+In both training and testing data, values for many variables are missing. The variables with no valid values in training and testing data are as following:
+"kurtosis roll belt" through "var yaw belt"
+"var accel arm" through "var yaw arm"
+"kurtosis roll arm" through "amplitude yaw arm"
+"kurtosis roll dumbbell" through "amplitude pitch dumbbell"
+I will remove the variables representing some ID and variables with invalid data from our dataset.
+```{r}
+valid <- !is.na(testing[1, ])
+testing <- testing[ , valid]
+training <- training[ ,valid]
+```
+
+Now there are no missiong values in the training and testing data.
+```{r}
+sum(is.na(testing))
+sum(is.na(training))
+names(training)
+```
+
+Split the training data into two parts, one for training the classifier and one for cross validation.
+```{r}
+library(caret)
+inTrain <- createDataPartition(y = training$classe, list = F)
+train <- training[inTrain, ] # data for training classifier
+valid <- training[-inTrain, ] # data for cross validation
+```
+
+Start the training using the defalut random forest classifier. Include the "user name", "num window", "roll belt", "pitch belt", "yaw belt" and "total accel belt" as predictors.
+```{r}
+modFit <- train(classe ~ user_name + num_window + roll_belt + pitch_belt + yaw_belt + total_accel_belt, data = train)
+```
+
+Calculate the precision of the "train" data.
+```{r}
+sum(predict(modFit, newdata = train) == train$classe)/nrow(train)
+```
+
+Calculate the precision of the "valid" data.
+```{r}
+sum(predict(modFit, newdata = valid) == valid$classe)/nrow(valid)
+```
+The out of sample error of this classifier is expected to be similar to that of the "valid" data shown above.
+
+Now apply our classifier on the testing dataset. My algorithm predcts the 20 cases in the testing sample as below.
+```{r}
+pred <- predict(modFit, newdata = testing)
+pred
+```
